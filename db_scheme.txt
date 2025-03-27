@@ -1,0 +1,96 @@
+CREATE TABLE users (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            role TEXT NOT NULL
+            start_date TEXT NOT NULL
+        );
+CREATE TABLE sqlite_sequence(name,seq);
+CREATE TABLE leave_requests (
+            leave_request_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            leave_type TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            reason TEXT,
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+CREATE TABLE leave_balances (
+            leave_balance_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE,
+            total_days INTEGER NOT NULL,
+            used_days INTEGER NOT NULL,
+            remaining_days INTEGER NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+CREATE TABLE kpi_categories (
+            category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_name TEXT NOT NULL
+        );
+CREATE TABLE kpis (
+            kpi_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_id INTEGER,
+            kpi_name TEXT NOT NULL,
+            unit TEXT,
+            description TEXT,
+            FOREIGN KEY (category_id) REFERENCES kpi_categories(category_id)
+        );
+CREATE TABLE kpi_results (
+            result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kpi_id INTEGER,
+            user_id INTEGER,
+            period TEXT,
+            target INTEGER,
+            actual_value INTEGER,
+            FOREIGN KEY (kpi_id) REFERENCES kpis(kpi_id),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+CREATE TABLE training_categories (
+            training_category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            training_category_name TEXT NOT NULL
+        );
+CREATE TABLE training_courses (
+            training_course_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            training_category_id INTEGER,
+            course_name TEXT NOT NULL,
+            description TEXT,
+            duration_hours INTEGER,
+            FOREIGN KEY (training_category_id) REFERENCES training_categories(training_category_id)
+        );
+CREATE TABLE user_training_progress (
+            progress_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            training_course_id INTEGER,
+            enrollment_date TEXT NOT NULL,
+            completion_percentage REAL DEFAULT 0.0,
+            is_completed BOOLEAN DEFAULT FALSE,
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
+            FOREIGN KEY (training_course_id) REFERENCES training_courses(training_course_id)
+        );
+CREATE TABLE teams (
+            team_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_name TEXT NOT NULL,
+            description TEXT,
+            team_lead_user_id INTEGER,
+            FOREIGN KEY (team_lead_user_id) REFERENCES users(user_id)
+        );
+CREATE TABLE projects (
+            project_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_name TEXT NOT NULL,
+            description TEXT,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            team_id INTEGER,
+            status TEXT DEFAULT 'planning',
+            FOREIGN KEY (team_id) REFERENCES teams(team_id)
+        );
+CREATE TABLE team_members (
+            team_member_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_id INTEGER,
+            user_id INTEGER,
+            role_in_team TEXT,
+            FOREIGN KEY (team_id) REFERENCES teams(team_id),
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
+            UNIQUE(team_id, user_id)
+        );
