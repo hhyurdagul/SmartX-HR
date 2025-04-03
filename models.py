@@ -5,8 +5,23 @@ class User(BaseModel):
     user_id: Optional[int] = None
     username: str
     email: str
-    role: str # e.g., "employee", "manager"
+    role: str # e.g., "employee", "manager", "admin"
     start_date: str # YYYY-MM-DD
+    password: Optional[str] = None # Store plain text password (INSECURE!) - None for responses
+
+# Model for user creation (includes password)
+class UserCreate(User):
+    password: str # Password is required for creation
+
+# Model for user login
+class UserLogin(BaseModel):
+    username: str # Or email
+    password: str
+
+# Model for login response (e.g., a simple token or user info)
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 class LeaveRequest(BaseModel):
     leave_request_id: Optional[int] = None
@@ -44,14 +59,8 @@ class KPIResult(BaseModel):
     target: int
     actual_value: int
 
-# Training Feature Models
-class TrainingCategory(BaseModel):
-    training_category_id: Optional[int] = None
-    training_category_name: str
-
 class TrainingCourse(BaseModel):
     training_course_id: Optional[int] = None
-    training_category_id: int
     course_name: str
     description: Optional[str] = None
     duration_hours: int
