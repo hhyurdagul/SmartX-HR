@@ -12,8 +12,17 @@ class LeaveRepository:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO leave_requests (user_id, leave_type, start_date, end_date, reason, status) VALUES (?, ?, ?, ?, ?, ?)",
-                    (leave_request.user_id, leave_request.leave_type, leave_request.start_date, leave_request.end_date, leave_request.reason, leave_request.status),
+                    "INSERT INTO leave_requests (user_id, leave_type, start_date, end_date, reason, status, ai_reasoning, ai_error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        leave_request.user_id, 
+                        leave_request.leave_type, 
+                        leave_request.start_date, 
+                        leave_request.end_date, 
+                        leave_request.reason, 
+                        leave_request.status,
+                        leave_request.ai_reasoning, # Will be None on initial creation
+                        leave_request.ai_error_message # Will be None on initial creation
+                    ),
                 )
                 conn.commit()
                 leave_request_id = cursor.lastrowid
@@ -54,6 +63,30 @@ class LeaveRepository:
             return self.get_request_by_id(leave_request_id)
         except sqlite3.Error as e:
             print(f"Database Error updating leave request status: {e}")
+            raise
+
+    def update_request_status_and_ai_reasoning(self, leave_request_id: int, new_status: str, ai_reasoning_text: Optional[str], ai_error_msg: Optional[str]) -> Optional[LeaveRequest]:
+        """Updates the status, AI reasoning, and AI error message of a specific leave request."""
+        try:
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE leave_requests 
+                    SET status = ?, 
+                        ai_reasoning = ?, 
+                        ai_error_message = ?
+                    WHERE leave_request_id = ?
+                    """,
+                    (new_status, ai_reasoning_text, ai_error_msg, leave_request_id)
+                )
+                conn.commit()
+                if cursor.rowcount == 0:
+                    return None # Indicate request not found or no change needed
+            # Return the updated request data
+            return self.get_request_by_id(leave_request_id)
+        except sqlite3.Error as e:
+            print(f"Database Error updating leave request status and AI reasoning: {e}")
             raise
 
     # --- Leave Balance Methods ---

@@ -2,7 +2,8 @@ from models import KPI, KPICategory, KPIResult, User
 from repositories.kpi_repository import KpiRepository
 from repositories.user_repository import UserRepository # To validate user IDs
 from fastapi import Depends, HTTPException
-from typing import List
+from typing import List, Dict # Added Dict
+import asyncio # Added asyncio
 
 class KpiService:
     """Encapsulates business logic related to KPIs, Categories, and Results."""
@@ -104,5 +105,27 @@ class KpiService:
         """Retrieves KPI results, potentially filtered."""
         # Add validation/authorization checks here if needed (e.g., can user X see results for user Y?)
         return self.kpi_repository.list_results(user_id=user_id, kpi_id=kpi_id)
+
+    async def update_kpi_result_ai_assessment(self, result_id: int, ai_data: Dict) -> KPIResult:
+        """Updates the AI assessment for a given KPI result."""
+        try:
+            updated_kpi_result = await asyncio.to_thread(
+                self.kpi_repository.update_kpi_result_ai_assessment, 
+                result_id, 
+                ai_data
+            )
+            if updated_kpi_result is None:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"KPI Result with ID {result_id} not found for AI update."
+                )
+            return updated_kpi_result
+        except HTTPException: # Re-raise HTTPException directly
+            raise
+        except Exception as e:
+            # Log the exception e
+            print(f"Error during KPI result AI assessment update for result ID {result_id}: {e}")
+            # Re-raise a generic server error or a more specific one if applicable
+            raise HTTPException(status_code=500, detail="Failed to update AI assessment for KPI result.")
 
     # Add update/delete methods as needed, including necessary business logic

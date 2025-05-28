@@ -1,8 +1,10 @@
 from models import LeaveRequest, LeaveBalance, User
 from repositories.leave_repository import LeaveRepository
-from repositories.user_repository import UserRepository # To check user existence
+from repositories.user_repository import UserRepository
 from fastapi import Depends, HTTPException
-from typing import List
+from typing import List, Dict, Optional # Added Optional
+import asyncio # Added asyncio
+# Removed: from .ai_service import AIService
 
 class LeaveService:
     """Encapsulates business logic related to leave requests and balances."""
@@ -10,33 +12,43 @@ class LeaveService:
     def __init__(
         self,
         leave_repository: LeaveRepository = Depends(),
-        user_repository: UserRepository = Depends() # Inject UserRepository as well
+        user_repository: UserRepository = Depends()
+        # Removed: ai_service: AIService = Depends()
     ):
         self.leave_repository = leave_repository
         self.user_repository = user_repository
+        # Removed: self.ai_service = ai_service
 
-    def _check_user_exists(self, user_id: int):
+    def _check_user_exists(self, user_id: int) -> User:
         """Helper to check if a user exists, raising HTTPException if not."""
         user = self.user_repository.get_user_by_id(user_id)
         if user is None:
             raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
-        return user # Return user if needed elsewhere
+        return user
 
-    def create_leave_request(self, leave_request_data: LeaveRequest) -> LeaveRequest:
+    async def create_leave_request(self, leave_request_data: LeaveRequest) -> LeaveRequest:
         """Creates a new leave request after validation."""
-        self._check_user_exists(leave_request_data.user_id)
+        self._check_user_exists(leave_request_data.user_id) # User existence check remains
 
-        # Add more business logic here, e.g.:
-        # - Check if dates are valid (start before end)
-        # - Check if user has enough balance (requires getting balance first)
-        # - Check for overlapping requests
+        # AI-related logic removed:
+        # - user_data_dict removed
+        # - team_context_dict removed
+        # - AI service call and response handling removed
+        # - Setting of ai_* fields on leave_request_data removed
 
         # Ensure status is 'pending' on creation if not provided or invalid
         if leave_request_data.status != "pending":
              print(f"Warning: Forcing status to 'pending' for new leave request for user {leave_request_data.user_id}")
              leave_request_data.status = "pending"
+        
+        # Ensure AI fields are not inadvertently carried over if present in input
+        leave_request_data.ai_priority_score = None
+        leave_request_data.ai_suggested_priority = None
+        leave_request_data.ai_reasoning = None
+        leave_request_data.ai_error_message = None
 
         try:
+            # This is a synchronous call; FastAPI handles it in a thread pool
             created_request = self.leave_repository.create_request(leave_request_data)
             # Maybe trigger a notification here?
             return created_request
@@ -99,3 +111,52 @@ class LeaveService:
     # def _update_leave_balance_after_request(self, user_id: int, request: LeaveRequest, new_status: str):
     #     # Logic to calculate leave days used and update LeaveBalance record
     #     pass
+
+    async def update_leave_request_ai_assessment(self, leave_request_id: int, ai_data: Dict) -> LeaveRequest:
+        """Updates the AI assessment for a given leave request."""
+        try:
+            updated_request = await asyncio.to_thread(
+                self.leave_repository.update_request_ai_assessment, 
+                leave_request_id, 
+                ai_data
+            )
+            if updated_request is None:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Leave request with ID {leave_request_id} not found for AI update."
+                )
+            return updated_request
+        except Exception as e:
+            # Log the exception e
+            print(f"Error during AI assessment update for request {leave_request_id}: {e}")
+            # Re-raise a generic server error or a more specific one if applicable
+            raise HTTPException(status_code=500, detail="Failed to update AI assessment for leave request.")
+
+    async def update_leave_request_status_and_ai_reasoning(self, leave_request_id: int, new_status: str, ai_reasoning_text: Optional[str], ai_error_msg: Optional[str]) -> LeaveRequest:
+        """Updates the status, AI reasoning, and AI error message of a specific leave request."""
+        try:
+            # Add validation for new_status if it's not covered elsewhere or if specific values are expected
+            allowed_statuses = ["approved", "rejected", "pending", "needs discussion"] # Extend if needed
+            if new_status not in allowed_statuses:
+                raise HTTPException(status_code=400, detail=f"Invalid new_status '{new_status}'. Must be one of {allowed_statuses}")
+
+            updated_request = await asyncio.to_thread(
+                self.leave_repository.update_request_status_and_ai_reasoning, 
+                leave_request_id, 
+                new_status, 
+                ai_reasoning_text, 
+                ai_error_msg
+            )
+            if updated_request is None:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Leave request with ID {leave_request_id} not found for status and AI reasoning update."
+                )
+            return updated_request
+        except HTTPException: # Re-raise HTTPException directly (e.g., from status validation)
+            raise
+        except Exception as e:
+            # Log the exception e
+            print(f"Error updating status and AI reasoning for leave request {leave_request_id}: {e}")
+            # Re-raise a generic server error
+            raise HTTPException(status_code=500, detail="Failed to update leave request status and AI reasoning.")

@@ -31,6 +31,8 @@ class LeaveRequest(BaseModel):
     end_date: str # YYYY-MM-DD
     reason: str
     status: str = "pending" # "pending", "approved", "rejected"
+    ai_reasoning: Optional[str] = None
+    ai_error_message: Optional[str] = None
 
 class LeaveBalance(BaseModel):
     leave_balance_id: Optional[int] = None # Add ID for database
@@ -58,6 +60,9 @@ class KPIResult(BaseModel):
     period: str # "2024-1.Dönem"
     target: int
     actual_value: int
+    ai_assessment: Optional[str] = None
+    ai_reasoning: Optional[str] = None
+    ai_error_message: Optional[str] = None
 
 class TrainingCourse(BaseModel):
     training_course_id: Optional[int] = None

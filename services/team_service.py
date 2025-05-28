@@ -2,7 +2,8 @@ from models import Team, Project, TeamMember, User
 from repositories.team_repository import TeamRepository
 from repositories.user_repository import UserRepository # To validate user IDs
 from fastapi import Depends, HTTPException
-from typing import List
+from typing import List, Optional # Added Optional
+import asyncio # Added asyncio
 
 class TeamService:
     """Encapsulates business logic related to Teams, Projects, and Team Members."""
@@ -133,3 +134,14 @@ class TeamService:
         return self.team_repository.get_teams_for_user_id(user_id)
 
     # Add update/delete methods as needed (e.g., remove_user_from_team, update_member_role)
+
+    async def get_team_id_for_user_async(self, user_id: int) -> Optional[int]:
+        """Asynchronously retrieves the team_id for a given user_id."""
+        try:
+            team_id = await asyncio.to_thread(self.team_repository.get_team_id_for_user, user_id)
+            return team_id
+        except Exception as e:
+            # Log the exception e if you have a logger configured
+            print(f"Error fetching team ID for user {user_id} in service layer: {e}")
+            # Depending on policy, you might want to return None or re-raise a specific service-layer exception
+            return None

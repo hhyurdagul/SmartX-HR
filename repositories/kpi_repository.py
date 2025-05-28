@@ -84,8 +84,17 @@ class KpiRepository:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO kpi_results (kpi_id, user_id, period, target, actual_value) VALUES (?, ?, ?, ?, ?)",
-                    (result.kpi_id, result.user_id, result.period, result.target, result.actual_value),
+                    "INSERT INTO kpi_results (kpi_id, user_id, period, target, actual_value, ai_assessment, ai_reasoning, ai_error_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        result.kpi_id, 
+                        result.user_id, 
+                        result.period, 
+                        result.target, 
+                        result.actual_value,
+                        result.ai_assessment, # Will be None on initial creation
+                        result.ai_reasoning,   # Will be None on initial creation
+                        result.ai_error_message # Will be None on initial creation
+                    ),
                 )
                 conn.commit()
                 result_id = cursor.lastrowid
@@ -125,5 +134,34 @@ class KpiRepository:
             if row:
                 return KPIResult(**dict(row))
             return None
+
+    def update_kpi_result_ai_assessment(self, result_id: int, ai_assessment_data: Dict) -> KPIResult | None:
+        """Updates the AI assessment fields of a specific KPI result."""
+        try:
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    UPDATE kpi_results 
+                    SET ai_assessment = ?, 
+                        ai_reasoning = ?, 
+                        ai_error_message = ?
+                    WHERE result_id = ?
+                    """,
+                    (
+                        ai_assessment_data.get('ai_assessment'),
+                        ai_assessment_data.get('ai_reasoning'),
+                        ai_assessment_data.get('ai_error_message'),
+                        result_id
+                    )
+                )
+                conn.commit()
+                if cursor.rowcount == 0:
+                    return None # Indicate result not found or no change needed
+            # Return the updated result data
+            return self.get_result_by_id(result_id)
+        except sqlite3.Error as e:
+            print(f"Database Error updating KPI result AI assessment: {e}")
+            raise
 
     # Add update/delete methods for categories, kpis, results if required
