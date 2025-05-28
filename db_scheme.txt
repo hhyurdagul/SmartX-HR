@@ -17,6 +17,8 @@
         end_date TEXT NOT NULL,
         reason TEXT,
         status TEXT DEFAULT 'pending',
+        ai_reasoning TEXT,
+        ai_error_message TEXT,
         FOREIGN KEY (user_id) REFERENCES users(user_id)
     )
 
@@ -54,6 +56,9 @@
         period TEXT,
         target INTEGER,
         actual_value INTEGER,
+        ai_assessment TEXT,
+        ai_reasoning TEXT,
+        ai_error_message TEXT,
         FOREIGN KEY (kpi_id) REFERENCES kpis(kpi_id),
         FOREIGN KEY (user_id) REFERENCES users(user_id)
     )

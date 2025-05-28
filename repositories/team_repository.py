@@ -1,6 +1,6 @@
 from models import Team, Project, TeamMember
 from .base_repository import get_db_connection
-from typing import List
+from typing import List, Optional # Added Optional
 import sqlite3
 
 class TeamRepository:
@@ -86,6 +86,20 @@ class TeamRepository:
             return None
 
     # --- Team Member Methods (Many-to-Many) ---
+
+    def get_team_id_for_user(self, user_id: int) -> Optional[int]:
+        """Retrieves the team_id for a given user_id from the team_members table."""
+        try:
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT team_id FROM team_members WHERE user_id = ? LIMIT 1", (user_id,))
+                row = cursor.fetchone()
+                if row:
+                    return row['team_id']
+                return None
+        except sqlite3.Error as e:
+            print(f"Database Error fetching team_id for user {user_id}: {e}")
+            return None
 
     def create_team_member(self, team_member: TeamMember) -> TeamMember | None:
         """Adds a user to a team."""
